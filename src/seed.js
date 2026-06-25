@@ -7,11 +7,22 @@
 //   Neo4j      : graphe plats <-> ingredients
 //
 // Lancer avec : npm run seed   (ou docker compose exec app npm run seed)
+//
+// NB : seed minimal d'infra. Les seeds complets et idempotents sont le ticket INFRA-03.
 
-import { connectPostgres, connectMongo, connectRedis, connectNeo4j } from "./db.js";
+import "dotenv/config";
+import mongoose from "mongoose";
+import {
+  pool,
+  redis,
+  connectPostgres,
+  connectMongo,
+  connectRedis,
+  connectNeo4j,
+} from "./db/index.js";
 
 async function seedPostgres() {
-  const pool = await connectPostgres();
+  await connectPostgres();
   await pool.query(`
     CREATE TABLE IF NOT EXISTS tables (
       id SERIAL PRIMARY KEY,
@@ -45,8 +56,8 @@ async function seedPostgres() {
 }
 
 async function seedMongo() {
-  const client = await connectMongo();
-  const menu = client.db().collection("menu");
+  const conn = await connectMongo();
+  const menu = conn.db.collection("menu");
   await menu.deleteMany({});
   await menu.insertMany([
     { code: "BURGER", nom: "Burger maison", categorie: "plat", prix_cents: 1450, disponible: true },
@@ -57,19 +68,20 @@ async function seedMongo() {
   ]);
   const count = await menu.countDocuments();
   console.log(`[mongodb] ${count} plats dans le menu`);
-  await client.close();
+  await mongoose.connection.close();
 }
 
 async function seedRedis() {
-  const client = await connectRedis();
-  await client.del("cuisine:queue");
-  await client.rPush("cuisine:queue", [
+  await connectRedis();
+  await redis.del("cuisine:queue");
+  await redis.rpush(
+    "cuisine:queue",
     JSON.stringify({ commande: 1, plat: "BURGER", table: 2, statut: "a_preparer" }),
-    JSON.stringify({ commande: 1, plat: "FRITES", table: 2, statut: "a_preparer" }),
-  ]);
-  const len = await client.lLen("cuisine:queue");
+    JSON.stringify({ commande: 1, plat: "FRITES", table: 2, statut: "a_preparer" })
+  );
+  const len = await redis.llen("cuisine:queue");
   console.log(`[redis] ${len} tickets dans la file cuisine`);
-  await client.quit();
+  await redis.quit();
 }
 
 async function seedNeo4j() {

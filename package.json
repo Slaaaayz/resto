@@ -3,20 +3,23 @@
   "version": "0.1.0",
   "description": "Systeme de prise de commande restaurant - borne client, ecran cuisine, interface serveur (infra)",
   "type": "module",
-  "main": "src/index.js",
+  "main": "src/server.js",
   "engines": {
     "node": ">=20"
   },
   "scripts": {
-    "start": "node src/index.js",
-    "dev": "node --watch src/index.js",
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
     "seed": "node src/seed.js"
   },
   "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
     "express": "^4.19.2",
-    "mongodb": "^6.8.0",
+    "ioredis": "^5.4.1",
+    "mongoose": "^8.6.0",
     "neo4j-driver": "^5.23.0",
     "pg": "^8.12.0",
-    "redis": "^4.7.0"
+    "socket.io": "^4.7.5"
   }
 }

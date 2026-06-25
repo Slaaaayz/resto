@@ -1,19 +1,28 @@
 # db/
 
-Couche **db** : connexions aux 4 bases de données et export des clients.
+Couche **db** : connexions aux 4 bases de données et export des clients partagés.
 
 Rôle : centraliser l'ouverture des connexions (PostgreSQL, MongoDB, Redis,
 Neo4j) et exposer un client réutilisable aux `services/`. Aucune logique
 métier ici, juste l'infrastructure de connexion.
 
-> Note : les helpers de connexion existent déjà dans `src/db.js`
-> (fonctions `connectPostgres`, `connectMongo`, `connectRedis`, `connectNeo4j`).
-> La migration vers ce dossier (un fichier par base) fait partie des étapes
-> suivantes du ticket INFRA-02, pas de l'étape "arborescence".
+Chaque connexion utilise un petit `withRetry` (voir `withRetry.js`) : robuste
+au lancement local hors Docker, où les bases ne sont pas encore prêtes.
 
-Fichiers prévus :
-- `postgres.js` → pool `pg`, log connexion réussie
-- `mongo.js`    → client MongoDB, log connexion réussie
-- `redis.js`    → client Redis, gestion erreur connexion
-- `neo4j.js`    → driver `neo4j-driver`, export d'une session factory
+Fichiers :
+- `postgres.js` → pool `pg` partagé (`pool`) + `connectPostgres()`
+- `mongo.js`    → connexion `mongoose` + `connectMongo()`
+- `redis.js`    → client `ioredis` (`redis`) + `connectRedis()`, gestion erreur
+- `neo4j.js`    → driver `neo4j-driver` (`driver`) + `getSession()` + `connectNeo4j()`
 - `index.js`    → barrel : ré-exporte les 4 connexions
+- `withRetry.js`→ helper interne de reconnexion
+
+```js
+// Usage type dans un service
+import { pool, redis, getSession } from "../db/index.js";
+
+await pool.query("SELECT 1");
+await redis.hset("panier:42", "plat_1", "...");
+const session = getSession();
+try { await session.run("MATCH (n) RETURN n"); } finally { await session.close(); }
+```
