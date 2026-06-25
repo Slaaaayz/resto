@@ -62,13 +62,36 @@ Une fois les services démarrés :
 docker compose exec app npm run seed
 ```
 
-Cela insère un jeu minimal dans chaque base (tables + commande, menu, file cuisine, graphe d'ingrédients).
+`scripts/seed-all.js` exécute en séquence les seeds de `seeds/` :
+
+| Base       | Contenu inséré                                                    |
+|------------|-------------------------------------------------------------------|
+| PostgreSQL | serveurs, tables, commandes, lignes, paiements (via fichiers `.sql`) |
+| MongoDB    | collection `plats` (carte de la borne, avec allergènes)           |
+| Redis      | statuts de tables, classement des plats, panier, file cuisine     |
+| Neo4j      | graphe plats ↔ catégories ↔ ingrédients                           |
+
+Chaque module est aussi lançable seul, ex. `node seeds/mongo/seed.js`.
+
+## Voir les données en brut
+
+Deux moyens d'inspecter le contenu réel des 4 bases :
+
+```bash
+# 1) En console (dump formaté de chaque base)
+docker compose exec app npm run dump
+```
+
+```bash
+# 2) En JSON dans le navigateur / curl
+curl http://localhost:3000/admin/dump
+```
 
 ## Ports exposés
 
-| Service    | Port(s)        | Accès                                   |
-|------------|----------------|-----------------------------------------|
-| app (API)  | `3000`         | http://localhost:3000 — `/`, `/health`  |
+| Service    | Port(s)        | Accès                                              |
+|------------|----------------|----------------------------------------------------|
+| app (API)  | `3000`         | http://localhost:3000 — `/`, `/health`, `/admin/dump` |
 | PostgreSQL | `5432`         | `postgresql://resto_user:resto_pass@localhost:5432/restaurant` |
 | MongoDB    | `27017`        | `mongodb://localhost:27017/restaurant`  |
 | Redis      | `6379`         | `redis://localhost:6379`                |
@@ -88,15 +111,31 @@ Chaque service expose un healthcheck Docker :
 
 ## Structure
 
+Architecture backend en couches (`server.js → app.js → routes → controllers → services → db`),
+serveur HTTP + Socket.io, stack : Express, mongoose, ioredis, pg, neo4j-driver.
+
 ```
 .
 ├── docker-compose.yml   # orchestration des 5 services
-├── Dockerfile           # image de l'app Node.js
+├── Dockerfile           # image de l'app Node.js (lance src/server.js)
 ├── .dockerignore
 ├── .env.example
 ├── package.json
-└── src/
-    ├── db.js            # connexions aux 4 bases (avec retry)
-    ├── index.js         # API + endpoint /health
-    └── seed.js          # jeu de données de démonstration
+├── src/
+│   ├── server.js        # entree : connexions + HTTP + Socket.io
+│   ├── app.js           # app Express (middlewares + routes)
+│   ├── dump.js          # lecture brute du contenu des bases
+│   ├── db/              # couche connexions (barrel + 1 fichier/base + withRetry)
+│   ├── routes/          # health.routes.js, admin.routes.js
+│   ├── controllers/     # health.controller.js, admin.controller.js
+│   ├── services/        # health.service.js
+│   └── middlewares/     # notFound.js, errorHandler.js
+├── seeds/
+│   ├── postgres/        # 01_schema.sql, 02_data.sql, seed.js
+│   ├── mongo/seed.js
+│   ├── redis/seed.js
+│   └── neo4j/seed.js
+└── scripts/
+    ├── seed-all.js      # npm run seed
+    └── dump-all.js      # npm run dump
 ```

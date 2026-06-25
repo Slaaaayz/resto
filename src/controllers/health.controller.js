@@ -11,3 +11,4 @@ export async function getHealth(_req, res) {
     timestamp: new Date().toISOString(),
   });
 }
+

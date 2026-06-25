@@ -5,6 +5,7 @@ import express from "express";
 import cors from "cors";
 
 import healthRoutes from "./routes/health.routes.js";
+import adminRoutes from "./routes/admin.routes.js";
 import { notFound } from "./middlewares/notFound.js";
 import { errorHandler } from "./middlewares/errorHandler.js";
 
@@ -19,12 +20,13 @@ app.get("/", (_req, res) => {
   res.json({
     service: "resto-api",
     message: "Infra restaurant operationnelle",
-    endpoints: ["/health"],
+    endpoints: ["/health", "/admin/dump"],
   });
 });
 
 // Routes metier (a etoffer au fil des tickets : /api/commandes, /api/plats, ...)
 app.use("/health", healthRoutes);
+app.use("/admin", adminRoutes);
 
 // 404 puis gestion globale des erreurs : TOUJOURS en dernier.
 app.use(notFound);
