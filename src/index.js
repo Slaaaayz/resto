@@ -78,6 +78,7 @@ async function start() {
   console.log("redis connecte");
   clients.neo4j = await connectNeo4j();
   console.log("neo4j connecte");
+  console.log("route admin connecte");
 
   app.listen(PORT, () => {
     console.log(`API a l'ecoute sur http://0.0.0.0:${PORT}`);
