@@ -1,0 +1,119 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: resto_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-restaurant}
+      POSTGRES_USER: ${POSTGRES_USER:-resto_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-resto_pass}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-resto_user} -d ${POSTGRES_DB:-restaurant}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - resto_net
+
+  mongodb:
+    image: mongo:8
+    container_name: resto_mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - resto_net
+
+  redis:
+    image: redis:8
+    container_name: resto_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - resto_net
+
+  neo4j:
+    image: neo4j:5
+    container_name: resto_neo4j
+    restart: unless-stopped
+    environment:
+      NEO4J_AUTH: neo4j/resto_pass
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    volumes:
+      - neo4j_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:7474 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - resto_net
+
+  app:
+    build: .
+    container_name: resto_app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: 3000
+      PGHOST: postgres
+      PGPORT: 5432
+      PGDATABASE: ${POSTGRES_DB:-restaurant}
+      PGUSER: ${POSTGRES_USER:-resto_user}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-resto_pass}
+      MONGO_URL: mongodb://mongodb:27017/${POSTGRES_DB:-restaurant}
+      REDIS_URL: redis://redis:6379
+      NEO4J_URL: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: resto_pass
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:3000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - resto_net
+
+volumes:
+  postgres_data:
+  mongo_data:
+  redis_data:
+  neo4j_data:
+
+networks:
+  resto_net:
+    driver: bridge

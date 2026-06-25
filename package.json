@@ -1,0 +1,22 @@
+{
+  "name": "resto",
+  "version": "0.1.0",
+  "description": "Systeme de prise de commande restaurant - borne client, ecran cuisine, interface serveur (infra)",
+  "type": "module",
+  "main": "src/index.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "seed": "node src/seed.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "mongodb": "^6.8.0",
+    "neo4j-driver": "^5.23.0",
+    "pg": "^8.12.0",
+    "redis": "^4.7.0"
+  }
+}
